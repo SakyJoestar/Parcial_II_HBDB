@@ -20,4 +20,6 @@ library(GEOquery)
 library(ggplot2)
 library(pheatmap)
 
+#probar
+sessionInfo()
 

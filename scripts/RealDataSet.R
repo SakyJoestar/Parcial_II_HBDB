@@ -1,55 +1,74 @@
+#########################################
+# Análisis de Expresión Génica con datos reales (GEO)
+# Samuel | julio 2025
+#########################################
+
+### 1. Instalación y carga de paquetes ----
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
+BiocManager::install("GEOquery")
+
+=======
 # Cargar los paquetes y librerias necesarios
 library(DESeq2)
 library(GEOquery)
 library(ggplot2)
 library(pheatmap)
 
-### 2. Descargar los datos desde GEO ----
-# Carga la plataforma GSE109379
-gse <- getGEO("GSE109379", GSEMatrix = TRUE)
-gse <- gse[[1]]  # accedemos al primer objeto de la lista
-print(gse[[1]])
+# 2. Descargar el archivo suplementario desde GEO
+url <- "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE164nnn/GSE164073/suppl/GSE164073_Eye_count_matrix.csv.gz"
+dest <- "GSE164073_Eye_count_matrix.csv.gz"
+download.file(url, destfile = dest)
 
-# Extrae los datos de expresión y metadatos
-exp_data <- exprs(gse)  # matriz de expresión
-meta_data <- pData(gse)  # información de las muestras
+# 3. Leer la matriz de conteos
+counts_df <- read.csv(gzfile(dest), row.names = 1)
 
-# Verifica las condiciones experimentales
-table(meta_data$source_name_ch1)
+countData <- counts_df
 
-# Creamos un factor para condiciones (LPS vs control)
-condition <- ifelse(grepl("LPS", meta_data$source_name_ch1), "treatment", "control")
-colData <- data.frame(condition = factor(condition))
-rownames(colData) <- colnames(exp_data)
+# Revisar datos
+dim(counts_df)      # genes x muestras
+head(counts_df)[,1:5] # primeras filas y columnas
 
-summary(exp_data)
-range(exp_data)
-any(exp_data != 0)
+# 4. Definir condiciones experimentales
+# ⚠️ Aquí debes mirar la metadata del estudio en GEO
+# Vector con las condiciones
+conditions <- c(
+  rep("control", 9),   # 9 mock
+  rep("treatment", 9)  # 9 CoV2
+)
 
+colData <- data.frame(
+  condition = factor(conditions)
+)
 
-### 3. Crear objeto DESeq2 ----
-dds <- DESeqDataSetFromMatrix(countData = round(exp_data), colData = colData, design = ~ condition)
+rownames(colData) <- colnames(counts_df)
 
-### 4. Análisis diferencial ----
+# 5. Crear objeto DESeq2
+dds <- DESeqDataSetFromMatrix(countData = countData,
+                              colData = colData,
+                              design = ~ condition)
+
+# 6. Correr análisis diferencial
 dds <- DESeq(dds)
 res <- results(dds)
 
-### 5. Visualización ----
-
-## Volcano plot
+# 7. Volcano plot
 res$significant <- ifelse(res$padj < 0.05, "Significant", "Not Significant")
 
 volcano <- ggplot(res, aes(x = log2FoldChange, y = -log10(padj), color = significant)) +
   geom_point(alpha = 0.5) +
   scale_color_manual(values = c("red", "blue")) +
   theme_minimal() +
-  labs(title = "Volcano Plot - GSE109379",
+
+  labs(title = "Volcano Plot - GSE164073",
        x = "Log2 Fold Change",
        y = "-Log10 Adjusted P-Value")
-
 print(volcano)
 
+
 ## Heatmap con genes más significativos
+
 top_genes <- head(order(res$padj, na.last = NA), 20)
 vsd <- varianceStabilizingTransformation(dds, blind = FALSE)
 heatmap_data <- assay(vsd)[top_genes, ]
@@ -63,7 +82,3 @@ pheatmap(heatmap_data,
          show_rownames = TRUE,
          show_colnames = TRUE,
          annotation_col = annotation_col)
-
-#########################################
-# Fin del análisis real 🔬
-#########################################
