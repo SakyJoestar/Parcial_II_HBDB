@@ -9,6 +9,8 @@ if (!requireNamespace("BiocManager", quietly = TRUE)) {
 }
 BiocManager::install("GEOquery")
 
+=======
+# Cargar los paquetes y librerias necesarios
 library(DESeq2)
 library(GEOquery)
 library(ggplot2)
@@ -53,16 +55,20 @@ res <- results(dds)
 
 # 7. Volcano plot
 res$significant <- ifelse(res$padj < 0.05, "Significant", "Not Significant")
+
 volcano <- ggplot(res, aes(x = log2FoldChange, y = -log10(padj), color = significant)) +
   geom_point(alpha = 0.5) +
   scale_color_manual(values = c("red", "blue")) +
   theme_minimal() +
+
   labs(title = "Volcano Plot - GSE164073",
        x = "Log2 Fold Change",
        y = "-Log10 Adjusted P-Value")
 print(volcano)
 
-# 8. Heatmap con los 20 genes más significativos
+
+## Heatmap con genes más significativos
+
 top_genes <- head(order(res$padj, na.last = NA), 20)
 vsd <- varianceStabilizingTransformation(dds, blind = FALSE)
 heatmap_data <- assay(vsd)[top_genes, ]
@@ -76,4 +82,3 @@ pheatmap(heatmap_data,
          show_rownames = TRUE,
          show_colnames = TRUE,
          annotation_col = annotation_col)
-
