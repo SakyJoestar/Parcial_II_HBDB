@@ -9,7 +9,6 @@ if (!requireNamespace("BiocManager", quietly = TRUE)) {
 }
 BiocManager::install("GEOquery")
 
-=======
 # Cargar los paquetes y librerias necesarios
 library(DESeq2)
 library(GEOquery)
